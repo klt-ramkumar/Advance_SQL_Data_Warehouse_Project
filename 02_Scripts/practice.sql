@@ -1,7 +1,3 @@
-SET client_min_messages = NOTICE;
+CALL silver.load_silver();
 
-DO $$
-BEGIN
-    RAISE NOTICE 'Testing notice messages';
-END;
-$$;
+SELECT * from silver.crm_cust_info
