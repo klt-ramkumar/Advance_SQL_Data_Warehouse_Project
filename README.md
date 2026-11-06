@@ -1,6 +1,6 @@
-# PostgreSQL Data Warehouse
+# PostgreSQL Data Warehouse | Medallion Architecture
 
-A SQL data warehouse that brings CRM and ERP sales data together through **Bronze, Silver, and Gold layers**. Six source CSV files are loaded into PostgreSQL, cleaned with SQL, and exposed through a dimensional model for customer, product, and sales analysis.
+A SQL data warehouse that brings CRM and ERP sales data together using **Medallion Architecture: Bronze, Silver, and Gold layers**. Six source CSV files are loaded into PostgreSQL, cleaned with SQL, and exposed through a dimensional model for customer, product, and sales analysis.
 
 Built by **Ram Kannan** as a hands-on data engineering project, adapting a SQL Server learning workflow to PostgreSQL.
 
@@ -18,15 +18,43 @@ The project demonstrates an end-to-end batch ETL workflow: ingest source files, 
 
 **Technology:** PostgreSQL, SQL, PL/pgSQL, CSV, VS Code with SQLTools, pgAdmin, and Git/GitHub.
 
-## Architecture
+## Medallion Architecture
 
-The pipeline follows **CSV sources → Bronze → Silver → Gold**.
+**Medallion Architecture** organises data into three layers of increasing refinement: Bronze preserves the source records, Silver cleans and standardises them, and Gold integrates them into a business-facing model. This project implements those layers as schemas inside PostgreSQL.
 
-- **Bronze:** full refresh of source-shaped tables, with progress notices, timing, and exception handling.
-- **Silver:** full refresh of cleaned tables, with a warehouse creation timestamp on each row.
-- **Gold:** regular SQL views over silver data. There is no separate gold data-loading procedure.
+![Animated PostgreSQL Medallion Architecture: CRM and ERP CSV sources flow through Bronze raw tables, Silver cleaned tables, and Gold dimensional views to SQL analysis](02_docs/medallion_architecture.gif)
 
-The repository includes [architecture](02_docs/data_architecture.png), [data flow](02_docs/data_flow.png), [integration](02_docs/data_integration.png), and [data model](02_docs/data_model.png) diagrams.
+*The animation illustrates the flow; it is not a live execution monitor. Gold views read Silver when queried rather than loading another physical copy.*
+
+### Follow one record through the warehouse
+
+1. **Source:** a customer arrives in a CRM CSV, with related demographic and location details in ERP files.
+2. **Bronze — ingest:** `bronze.load_bronze()` uses `COPY` to load the six CSV files into source-shaped tables.
+3. **Silver — refine:** `silver.load_silver()` removes missing customer IDs, keeps the latest record per customer, trims names, and standardises codes and identifiers.
+4. **Gold — integrate:** `gold.dim_customers` joins the cleaned CRM customer with ERP birthdate, gender, and country information. Product and sales views complete the dimensional model.
+5. **Consume:** SQL queries join the fact and dimension views to explore sales, products, and customers.
+
+| Design decision | Implementation |
+|---|---|
+| Layer separation | `bronze`, `silver`, and `gold` schemas in PostgreSQL |
+| Bronze and Silver loading | Batch processing with full refreshes |
+| Orchestration | Explicit calls to the two PL/pgSQL procedures |
+| Gold storage | Two dimension views and one fact view; no separate Gold load |
+| Load visibility | Progress notices, elapsed timings, and exception handling |
+| Consumption | Analytical SQL; the model can support downstream BI tools |
+
+### Reference architecture and design documents
+
+<details>
+<summary>View the original learning-project architecture</summary>
+
+![Original Data with Baraa reference architecture](02_docs/data_architecture.png)
+
+This reference diagram is from the SQL Server learning material. The animated diagram above reflects this repository's PostgreSQL implementation. BI tools and machine-learning consumers shown in the reference are possible downstream uses, not delivered components of this repository.
+
+</details>
+
+Explore the [data flow](02_docs/data_flow.png), [integration](02_docs/data_integration.png), and [data model](02_docs/data_model.png) diagrams for more detail.
 
 ## Source data
 
